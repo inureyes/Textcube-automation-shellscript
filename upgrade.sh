@@ -1,18 +1,25 @@
 #!/bin/bash
-# $Id: upgrade.sh,v 1.8.5 2011/04/14 15:11:12 inureyes Exp $
+# $Id: upgrade.sh,v 1.10.2 2015/01/16 15:11:12 inureyes Exp $
 # Original script for moniwiki by wkpark. Modified for Textcube by inureyes
 
 CHECKSUM=
-PACKAGE=textcube
-REMOTESOURCE=http://download.textcube.org/
-UPDATE=-1.8
+PACKAGE=Textcube
+REMOTESOURCE=https://github.com/Needlworks/Textcube/archive/v
+UPDATE=-1.10
 
 if [ -z "$1" ]; then
 	cat <<HELP
 $PACKAGE upgrade script
+-----------------------
 
-Usage: $0 $PACKAGE-<ver>.tar.gz      (for manual download)
-       $0 auto                       (for automatic download from remote repository)
+Usage: $0 <version number>   (for manual download)
+
+       e.g.): $0 1.10.2      (upgrades current $PACKAGE to 1.10.2)
+
+ * If upgrade archive is located at the root directory of $PACKAGE, this script will use that.
+ * If no file is prepared, script will download source file from $REMOTESOURCE.
+ * If archive contains new upgrade script,
+
 HELP
 	exit 0
 fi
@@ -27,7 +34,14 @@ MAGENTA="echo -en \\033[1;35m"
 NAME="Textcube"
 
 $SUCCESS
-echo
+export UNAME="`uname`"
+if [[ "$UNAME" == 'Linux' ]]; then
+	platform='linux'
+	MD5SCRIPT='md5sum'
+elif [[ "$UNAME" == 'Darwin' ]]; then
+	platform='macosx'
+	MD5SCRIPT='gmd5sum'
+fi
 echo "+---------------------------------------+"
 echo "|        $NAME upgrade script        |"
 echo "+---------------------------------------+"
@@ -72,13 +86,13 @@ for arg; do
 		TAR=$option
 	esac
 done
-
+TAR=$TAR.tar.gz
 if ! [ -f $TAR ];
 then
     if [ x$TAR != xauto ] ;
     then
         $FAILURE
-        echo 
+        echo
         echo -n $TAR
         echo " does not exist."
     fi
@@ -90,30 +104,11 @@ then
 		$NORMAL
 		exit;
 	fi
-    $WARNING
-    echo -n " Which package do you want to download? ("
-    $MAGENTA
-    echo -n c
-    $WARNING
-    echo -n "ore package/"
-    $MAGENTA
-    echo -n E
-    $WARNING
-    echo -n "xpansion package) "
-    $NORMAL
-    echo -n " (Type 'c/E')  "
-    read TYPE
-    if [ x$TYPE == xc ] ;
-    then
-        TAR=$PACKAGE$UPDATE-latest-core.tar.gz
-    else
-        TAR=$PACKAGE$UPDATE-latest-expansion.tar.gz
-    fi
-    REMOTESOURCEURL=$REMOTESOURCE$TAR
+	REMOTESOURCEURL=$REMOTESOURCE$TAR
     $MESSAGE
     echo " -- Downloading package from remote repository "
     echo
-    echo $REMOTESOURCE
+    echo $REMOTESOURCEURL
     wget $REMOTESOURCEURL -O ./$TAR
     if ! [ -f $TAR ];
     then
@@ -130,8 +125,8 @@ $MESSAGE
 echo " -- Extracting tarball..."
 $NORMAL
 mkdir -p $TMP/$PACKAGE
-echo tar xzf $TAR --strip-components=2 -C$TMP/$PACKAGE
-tar xzf $TAR --strip-components=2 -C$TMP/$PACKAGE
+echo tar xzf $TAR --strip-components=1 -C$TMP/$PACKAGE
+tar xzf $TAR --strip-components=1 -C$TMP/$PACKAGE
 $MESSAGE
 
 echo " -- Check new upgrade.sh script from package..."
@@ -166,14 +161,14 @@ $NORMAL
 FILELIST=$(find $TMP/$PACKAGE -type f | sort | sed "s@^$TMP/$PACKAGE/@@")
 
 rm -f checksum-new
-(cd $TMP/$PACKAGE; for x in $FILELIST; do test -f $x && md5sum $x;done >> ../../checksum-new)
+(cd $TMP/$PACKAGE; for x in $FILELIST; do test -f $x && $MD5SCRIPT $x;done >> ../../checksum-new)
 
 if [ ! -f "$CHECKSUM" ];then
 	rm -rf checksum-current
 	$MESSAGE
 	echo " -- Making the checksum list for currently installed version..."
 	$NORMAL
-	for x in $FILELIST; do test -f $x && md5sum $x;done >> checksum-current
+	for x in $FILELIST; do test -f $x && $MD5SCRIPT $x;done >> checksum-current
 	CHECKSUM=checksum-current
 fi
 
